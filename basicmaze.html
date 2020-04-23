@@ -1,0 +1,68 @@
+<!-- Standalone basic maze using HTML Canvas-->
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title>maze maze</title>
+    <script type="text/javascript">
+      var TILE_SIZE = 50;
+      function draw() {
+        var canvas = document.getElementById('mazeFrame');
+        var canvasWidth = canvas.width;
+        var canvasHeight = canvas.height;
+        if (canvas.getContext) {
+          var ctx = canvas.getContext('2d');
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          // draw four-sided box per maze cell
+          for (var x = 0; x <= canvasWidth; x += TILE_SIZE) {
+            for (var y = 0; y <= canvasHeight; y += TILE_SIZE) {
+              ctx.beginPath();
+            
+              ctx.strokeStyle = '#000000';
+
+              ctx.moveTo(x, y);
+              ctx.lineTo(x + TILE_SIZE-3, y);
+              ctx.lineTo(x + TILE_SIZE-3, y + TILE_SIZE-3);
+              ctx.lineTo(x, y + TILE_SIZE-3);
+              ctx.lineTo(x, y);
+
+              ctx.stroke();
+            }
+          }
+        }
+      }
+
+
+      // low-budget 'random' generator
+      // found this on Stack Overflow
+      function cheesyRandom(seed) {
+          var x = Math.sin(seed) * 1000000;
+          return x - Math.floor(x);
+      }
+
+    </script>
+    <style type="text/css">
+      canvas { border: 1px solid black; }
+      #main {
+        background: #999;
+        padding: 10px;
+      }
+
+      .frame {
+        background: #ccc;
+        /*height: 200px;*/
+        margin: 20px;
+      }
+    </style>
+  </head>
+
+
+  <body onload="draw();">
+    <div id="main">
+      <div class="frame">
+        <canvas id="mazeFrame" width="890" height="490"></canvas>
+      </div> 
+    </div>
+  </body>
+</html>
