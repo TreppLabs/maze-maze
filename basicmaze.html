@@ -7,6 +7,32 @@
     <title>maze maze</title>
     <script type="text/javascript">
       var TILE_SIZE = 50;
+      var MAZE_ROWS = 3;
+      var MAZE_COLS = 5;
+      // maze indexed [col,row] or [x,y]
+      // top left cell is [0,0]
+
+
+      // initially all walls are filled in
+      var horizWalls = new Array(MAZE_COLS);
+      for (var i = 0; i < horizWalls.length; i++) {
+        horizWalls[i] = new Array(MAZE_ROWS+1);
+        for (var j = 0; j < MAZE_ROWS+1; j++) {
+          horizWalls[i][j] = true;
+        }
+      }
+      var vertWalls = new Array(MAZE_COLS+1);
+      for (var i = 0; i < vertWalls.length; i++) {
+        vertWalls[i] = new Array(MAZE_ROWS);
+        for (var j = 0; j < MAZE_ROWS; j++) {
+          vertWalls[i][j] = true;
+        }
+      }
+
+      function makeAndDraw() {
+        draw();
+      }
+      
       function draw() {
         var canvas = document.getElementById('mazeFrame');
         var canvasWidth = canvas.width;
@@ -14,25 +40,50 @@
         if (canvas.getContext) {
           var ctx = canvas.getContext('2d');
           ctx.clearRect(0, 0, canvas.width, canvas.height);
-          // draw four-sided box per maze cell
-          for (var x = 0; x <= canvasWidth; x += TILE_SIZE) {
-            for (var y = 0; y <= canvasHeight; y += TILE_SIZE) {
-              ctx.beginPath();
-            
-              ctx.strokeStyle = '#000000';
-
-              ctx.moveTo(x, y);
-              ctx.lineTo(x + TILE_SIZE-3, y);
-              ctx.lineTo(x + TILE_SIZE-3, y + TILE_SIZE-3);
-              ctx.lineTo(x, y + TILE_SIZE-3);
-              ctx.lineTo(x, y);
-
-              ctx.stroke();
+          // draw walls, vert and horiz
+          for (var row = 0; row < MAZE_ROWS; row += 1) {
+            for (var col = 0; col < MAZE_COLS; col += 1) {
+              // set x,y to top left of cell [col][row]
+              var x = col * TILE_SIZE;
+              var y = row * TILE_SIZE;
+              if (horizWalls[col][row]) {
+                ctx.beginPath();
+                ctx.strokeStyle = '#000000';
+                ctx.moveTo(x + 1, y);
+                ctx.lineTo(x + TILE_SIZE-2, y);
+                ctx.stroke();
+              }
+              if (vertWalls[col][row]) {
+                ctx.beginPath();
+                ctx.strokeStyle = '#000000';
+                ctx.moveTo(x, y + 1);
+                ctx.lineTo(x, y + TILE_SIZE-2);
+                ctx.stroke();
+              }
+              // if in last col, may need to draw extra vert at end of row
+              if (col == MAZE_COLS-1) {
+                if (vertWalls[col+1][row]) {
+                  ctx.beginPath();
+                  ctx.strokeStyle = '#000000';
+                  ctx.moveTo(x + TILE_SIZE, y + 1);
+                  ctx.lineTo(x + TILE_SIZE, y + TILE_SIZE-2);
+                  ctx.stroke();
+                }
+              }
+              // if in last row, may need to draw extra horiz at bottom of column
+              if (row == MAZE_ROWS-1) {
+                if (horizWalls[col][row+1]) {
+                  ctx.beginPath();
+                  ctx.strokeStyle = '#000000';
+                  ctx.moveTo(x + 1, y + TILE_SIZE);
+                  ctx.lineTo(x + TILE_SIZE-2, y + TILE_SIZE);
+                  ctx.stroke();
+                }
+              }
             }
           }
         }
       }
-
 
       // low-budget 'random' generator
       // found this on Stack Overflow
@@ -40,6 +91,7 @@
           var x = Math.sin(seed) * 1000000;
           return x - Math.floor(x);
       }
+
 
     </script>
     <style type="text/css">
@@ -58,10 +110,10 @@
   </head>
 
 
-  <body onload="draw();">
+  <body onload="makeAndDraw();">
     <div id="main">
       <div class="frame">
-        <canvas id="mazeFrame" width="890" height="490"></canvas>
+        <canvas id="mazeFrame" width="800" height="490"></canvas>
       </div> 
     </div>
   </body>
