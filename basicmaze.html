@@ -6,12 +6,12 @@
     <meta charset="utf-8"/>
     <title>maze maze</title>
     <script type="text/javascript">
-      const TILE_SIZE = 15;
+      const TILE_SIZE = 60;
       const TOP_MARGIN = 2 * TILE_SIZE;
-      const MAZE_ROWS = 28;
-      const MAZE_COLS = 50;
-      let start = [Math.floor(cheesyRandom(window.performance.now())*MAZE_COLS-1), 0];
-      let finish = [Math.floor(cheesyRandom(window.performance.now())*MAZE_COLS-1), MAZE_ROWS-1];
+      const MAZE_ROWS = 3;
+      const MAZE_COLS = 5;
+      let start = [Math.floor(cheesyRandom(window.performance.now())*MAZE_COLS), 0];
+      let finish = [Math.floor(cheesyRandom(window.performance.now())*MAZE_COLS), MAZE_ROWS-1];
       console.log(start);
       console.log(finish);
 
@@ -34,16 +34,46 @@
         }
       }
 
-      function makeAndDraw() {
-        draw();
+      function removeTopWall(col, row) {
+        horizWalls[col][row] = 0;
       }
 
-      function downArrow(x,y) {
-        let p = new Path2D('M ' + x + ' ' + y + ' h 4 v 8 h 4 l -6 6 l -6 -6 h 4 Z');
-        return p;  
+      function removeBottomWall(col, row) {
+        horizWalls[col][row+1] = 0;
+      }
+
+      function removeLeftWall(col, row) {
+        vertWalls[col][row] = 0;
+      }
+
+      function removeRightWall(col, row) {
+        vertWalls[col+1][row] = 0;
+      }
+
+      function makeMaze() {
+        removeTopWall(start[0], start[1]);
+        removeBottomWall(finish[0], finish[1]);
+      }
+
+      function makeAndDraw() {
+        makeMaze();
+        drawMaze();
+      }
+
+      // create path for downward-pointing arrow
+      // centered at x,y  fits in box of size * size pixels
+      function downArrow(x, y, size) {
+        let u = Math.floor(size/6);  // "unit length"
+        // start at top left of arrow's "stem" work around clockwise
+        let pathString = 'M ' + x + ' ' + y;
+        pathString = pathString + ' m ' + (-2*u) + ' ' + (-3*u);
+        pathString = pathString + ' h ' + 4*u + ' v ' + 4*u + ' h ' + 2*u;
+        pathString = pathString + ' l ' + (-4*u) + ' ' + 4*u + ' l ' + (-4*u) + ' ' + (-4*u);
+        pathString = pathString + ' h ' + 2*u + ' Z';
+        return new Path2D(pathString);
       }
       
-      function draw() {
+      function drawMaze() {
 
         var canvas = document.getElementById('mazeFrame');
         var canvasWidth = canvas.width;
@@ -51,9 +81,9 @@
         if (canvas.getContext) {
           var ctx = canvas.getContext('2d');
           ctx.clearRect(0, 0, canvas.width, canvas.height);
-          let startArrow = downArrow(start[0] * TILE_SIZE, TILE_SIZE);
+          let startArrow = downArrow(start[0] * TILE_SIZE + TILE_SIZE/2, (TILE_SIZE), TILE_SIZE);
           ctx.fill(startArrow);
-          let finishArrow = downArrow(finish[0] * TILE_SIZE, TOP_MARGIN + MAZE_ROWS * TILE_SIZE);
+          let finishArrow = downArrow(finish[0] * TILE_SIZE + TILE_SIZE/2, TOP_MARGIN + (MAZE_ROWS+1) * TILE_SIZE, TILE_SIZE);
           ctx.fill(finishArrow);
           // draw walls, vert and horiz
           for (var row = 0; row < MAZE_ROWS; row += 1) {
