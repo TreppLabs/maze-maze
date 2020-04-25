@@ -6,10 +6,10 @@
     <meta charset="utf-8"/>
     <title>maze maze</title>
     <script type="text/javascript">
-      const TILE_SIZE = 60;
+      const TILE_SIZE = 30;
       const TOP_MARGIN = 2 * TILE_SIZE;
-      const MAZE_ROWS = 3;
-      const MAZE_COLS = 5;
+      const MAZE_ROWS = 12;
+      const MAZE_COLS = 15;
       let start = [Math.floor(cheesyRandom(window.performance.now())*MAZE_COLS), 0];
       let finish = [Math.floor(cheesyRandom(window.performance.now())*MAZE_COLS), MAZE_ROWS-1];
       console.log(start);
@@ -34,6 +34,69 @@
         }
       }
 
+      // Statuses we keep for cells as we "dig" out path through maze
+      const UNVISITED = 1;  // haven't been here yet
+      const VISITED = 2;    // been here, but haven't tried all directions
+      const DONE = 3;       // have looked in all directions
+      var cellStatus = new Array(MAZE_COLS);
+      for (var col = 0; col < cellStatus.length; col++) {
+        cellStatus[col] = new Array(MAZE_ROWS);
+        for (var row = 0; row < MAZE_ROWS; row++) {
+          cellStatus[col][row] = UNVISITED;
+        }
+      }
+
+      function getDigOrder() {
+        // should randomize, maybe according to some parameters
+        return ['U', 'D', 'L', 'R'];
+      }
+
+      function digCell(col, row) {
+        console.log('From (' + col + ', ' + row + ')');
+        let ordering = getDigOrder();
+        cellStatus[col][row] = VISITED;
+        for (let i = 0; i < 4; i++) {
+          if (ordering[i] == 'U') {
+            let digCol = col;
+            let digRow = row-1;
+            console.log('From (' + col + ', ' + row + '), ' + 'Dir ' + ordering[i] + ', checking cell (' + digCol + ', ' + digRow + ')')
+            if (digRow >= 0 && cellStatus[digCol][digRow] == UNVISITED) {
+              removeTopWall(col, row);
+              digCell(digCol, digRow);
+            }
+          }
+          if (ordering[i] == 'D') {
+            let digCol = col;
+            let digRow = row+1;
+            console.log('From (' + col + ', ' + row + '), ' + 'Dir ' + ordering[i] + ', checking cell (' + digCol + ', ' + digRow + ')')
+            if (digRow < MAZE_ROWS && cellStatus[digCol][digRow] == UNVISITED) {
+              removeBottomWall(col, row);
+              digCell(digCol, digRow);
+            }
+          }
+          if (ordering[i] == 'L') {
+            let digCol = col-1;
+            let digRow = row;  
+            console.log('From (' + col + ', ' + row + '), ' + 'Dir ' + ordering[i] + ', checking cell (' + digCol + ', ' + digRow + ')')
+            if (digCol >= 0 && cellStatus[digCol][digRow] == UNVISITED) {
+              removeLeftWall(col, row);
+              digCell(digCol, digRow);
+            }
+          }
+          if (ordering[i] == 'R') {
+            let digCol = col+1;
+            let digRow = row;
+            console.log('From (' + col + ', ' + row + '), ' + 'Dir ' + ordering[i] + ', checking cell (' + digCol + ', ' + digRow + ')')
+            if (digCol < MAZE_COLS && cellStatus[digCol][digRow] == UNVISITED) {
+              removeRightWall(col, row);
+              digCell(digCol, digRow);
+            }
+          }
+        }
+        cellStatus[col][row] = DONE;
+        return;
+      }
+
       function removeTopWall(col, row) {
         horizWalls[col][row] = 0;
       }
@@ -53,6 +116,7 @@
       function makeMaze() {
         removeTopWall(start[0], start[1]);
         removeBottomWall(finish[0], finish[1]);
+        digCell(start[0], start[1]);
       }
 
       function makeAndDraw() {
