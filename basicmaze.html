@@ -6,14 +6,14 @@
     <meta charset="utf-8"/>
     <title>maze maze</title>
     <script type="text/javascript">
-      const TILE_SIZE = 30;
+      const TILE_SIZE = 12;
       const TOP_MARGIN = 2 * TILE_SIZE;
-      const MAZE_ROWS = 12;
-      const MAZE_COLS = 15;
-      let start = [Math.floor(cheesyRandom(window.performance.now())*MAZE_COLS), 0];
-      let finish = [Math.floor(cheesyRandom(window.performance.now())*MAZE_COLS), MAZE_ROWS-1];
-      console.log(start);
-      console.log(finish);
+      const LEFT_MARGIN = TILE_SIZE;
+      const MAZE_ROWS = 30;
+      const MAZE_COLS = 50;
+      let randomSeed = window.performance.now();
+      let start = [Math.floor(cheesyRandom()*MAZE_COLS), 0];
+      let finish = [Math.floor(cheesyRandom()*MAZE_COLS), MAZE_ROWS-1];
 
       // maze indexed [col,row] or [x,y]
       // top left cell is [0,0]
@@ -47,19 +47,24 @@
       }
 
       function getDigOrder() {
-        // should randomize, maybe according to some parameters
-        return ['U', 'D', 'L', 'R'];
+        // randomly ordered
+        let directions = ['U', 'D', 'L', 'R'];
+        for (let i=0; i<3; i++) {
+          let dir = directions[i];
+          let j = randomBetween(i,3);
+          directions[i] = directions[j];
+          directions[j] = dir;
+        }
+        return directions;
       }
 
       function digCell(col, row) {
-        console.log('From (' + col + ', ' + row + ')');
         let ordering = getDigOrder();
         cellStatus[col][row] = VISITED;
         for (let i = 0; i < 4; i++) {
           if (ordering[i] == 'U') {
             let digCol = col;
             let digRow = row-1;
-            console.log('From (' + col + ', ' + row + '), ' + 'Dir ' + ordering[i] + ', checking cell (' + digCol + ', ' + digRow + ')')
             if (digRow >= 0 && cellStatus[digCol][digRow] == UNVISITED) {
               removeTopWall(col, row);
               digCell(digCol, digRow);
@@ -68,7 +73,6 @@
           if (ordering[i] == 'D') {
             let digCol = col;
             let digRow = row+1;
-            console.log('From (' + col + ', ' + row + '), ' + 'Dir ' + ordering[i] + ', checking cell (' + digCol + ', ' + digRow + ')')
             if (digRow < MAZE_ROWS && cellStatus[digCol][digRow] == UNVISITED) {
               removeBottomWall(col, row);
               digCell(digCol, digRow);
@@ -77,7 +81,6 @@
           if (ordering[i] == 'L') {
             let digCol = col-1;
             let digRow = row;  
-            console.log('From (' + col + ', ' + row + '), ' + 'Dir ' + ordering[i] + ', checking cell (' + digCol + ', ' + digRow + ')')
             if (digCol >= 0 && cellStatus[digCol][digRow] == UNVISITED) {
               removeLeftWall(col, row);
               digCell(digCol, digRow);
@@ -86,7 +89,6 @@
           if (ordering[i] == 'R') {
             let digCol = col+1;
             let digRow = row;
-            console.log('From (' + col + ', ' + row + '), ' + 'Dir ' + ordering[i] + ', checking cell (' + digCol + ', ' + digRow + ')')
             if (digCol < MAZE_COLS && cellStatus[digCol][digRow] == UNVISITED) {
               removeRightWall(col, row);
               digCell(digCol, digRow);
@@ -145,28 +147,28 @@
         if (canvas.getContext) {
           var ctx = canvas.getContext('2d');
           ctx.clearRect(0, 0, canvas.width, canvas.height);
-          let startArrow = downArrow(start[0] * TILE_SIZE + TILE_SIZE/2, (TILE_SIZE), TILE_SIZE);
+          let startArrow = downArrow(LEFT_MARGIN + start[0] * TILE_SIZE + TILE_SIZE/2, (TILE_SIZE), TILE_SIZE);
           ctx.fill(startArrow);
-          let finishArrow = downArrow(finish[0] * TILE_SIZE + TILE_SIZE/2, TOP_MARGIN + (MAZE_ROWS+1) * TILE_SIZE, TILE_SIZE);
+          let finishArrow = downArrow(LEFT_MARGIN + finish[0] * TILE_SIZE + TILE_SIZE/2, TOP_MARGIN + (MAZE_ROWS+1) * TILE_SIZE, TILE_SIZE);
           ctx.fill(finishArrow);
           // draw walls, vert and horiz
           for (var row = 0; row < MAZE_ROWS; row += 1) {
             for (var col = 0; col < MAZE_COLS; col += 1) {
               // set x,y to top left of cell [col][row]
-              var x = col * TILE_SIZE;
+              var x = LEFT_MARGIN + col * TILE_SIZE;
               var y = TOP_MARGIN + row * TILE_SIZE;
               if (horizWalls[col][row]) {
                 ctx.beginPath();
                 ctx.strokeStyle = '#000000';
-                ctx.moveTo(x + 1, y);
-                ctx.lineTo(x + TILE_SIZE-2, y);
+                ctx.moveTo(x, y);
+                ctx.lineTo(x + TILE_SIZE, y);
                 ctx.stroke();
               }
               if (vertWalls[col][row]) {
                 ctx.beginPath();
                 ctx.strokeStyle = '#000000';
-                ctx.moveTo(x, y + 1);
-                ctx.lineTo(x, y + TILE_SIZE-2);
+                ctx.moveTo(x, y);
+                ctx.lineTo(x, y + TILE_SIZE);
                 ctx.stroke();
               }
               // if in last col, may need to draw extra vert at end of row
@@ -174,8 +176,8 @@
                 if (vertWalls[col+1][row]) {
                   ctx.beginPath();
                   ctx.strokeStyle = '#000000';
-                  ctx.moveTo(x + TILE_SIZE, y + 1);
-                  ctx.lineTo(x + TILE_SIZE, y + TILE_SIZE-2);
+                  ctx.moveTo(x + TILE_SIZE, y);
+                  ctx.lineTo(x + TILE_SIZE, y + TILE_SIZE);
                   ctx.stroke();
                 }
               }
@@ -184,8 +186,8 @@
                 if (horizWalls[col][row+1]) {
                   ctx.beginPath();
                   ctx.strokeStyle = '#000000';
-                  ctx.moveTo(x + 1, y + TILE_SIZE);
-                  ctx.lineTo(x + TILE_SIZE-2, y + TILE_SIZE);
+                  ctx.moveTo(x, y + TILE_SIZE);
+                  ctx.lineTo(x + TILE_SIZE, y + TILE_SIZE);
                   ctx.stroke();
                 }
               }
@@ -197,11 +199,15 @@
 
       // low-budget 'random' generator
       // found this on Stack Overflow
-      function cheesyRandom(seed) {
-          var x = Math.sin(seed) * 1000000;
-          return x - Math.floor(x);
+      // could cycle
+      function cheesyRandom() {
+          randomSeed = Math.sin(randomSeed) * 1000000;
+          return randomSeed - Math.floor(randomSeed);
       }
-
+      // integer between lo, hi, inclusive
+      function randomBetween(lo, hi) {
+        return Math.floor(lo + cheesyRandom()*(1+hi-lo));
+      }
 
     </script>
     <style type="text/css">
@@ -223,7 +229,7 @@
   <body onload="makeAndDraw();">
     <div id="main">
       <div class="frame">
-        <canvas id="mazeFrame" width="800" height="490"></canvas>
+        <canvas id="mazeFrame" width="1000" height="1500"></canvas>
       </div> 
     </div>
   </body>
