@@ -6,11 +6,14 @@
     <meta charset="utf-8"/>
     <title>maze maze</title>
     <script type="text/javascript">
-      const TILE_SIZE = 12;
+      const TILE_SIZE = 8;
       const TOP_MARGIN = 2 * TILE_SIZE;
       const LEFT_MARGIN = TILE_SIZE;
-      const MAZE_ROWS = 30;
-      const MAZE_COLS = 50;
+      // In recursive version:
+      // 192x100 dies
+      // 191x100 ok
+      const MAZE_ROWS = 80;
+      const MAZE_COLS = 100;
       let randomSeed = window.performance.now();
       let start = [Math.floor(cheesyRandom()*MAZE_COLS), 0];
       let finish = [Math.floor(cheesyRandom()*MAZE_COLS), MAZE_ROWS-1];
@@ -57,6 +60,7 @@
         }
         return directions;
       }
+
 
       function digCell(col, row) {
         let ordering = getDigOrder();
@@ -226,6 +230,7 @@
   </head>
 
 
+  <!-- need to set canvas size based on #rows and cols -->
   <body onload="makeAndDraw();">
     <div id="main">
       <div class="frame">
