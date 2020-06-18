@@ -6,12 +6,17 @@
     <meta charset="utf-8"/>
     <title>maze maze</title>
     <script type="text/javascript">
-      const TILE_SIZE = 10;
+      const TILE_SIZE = 12;
       const TOP_MARGIN = 2 * TILE_SIZE;
       const LEFT_MARGIN = TILE_SIZE;
       // In recursive version:
-      // 192x100 dies
+      // 192x100 dies (stack overflow)
       // 191x100 ok
+      // so max is about 19,000 cells
+      // Non-recursive:
+      // 2500x2500 runs fine, takes about 12 sec
+      // max is > 6,250,000 cells
+      // (on my machine)
       const MAZE_ROWS = 50;
       const MAZE_COLS = 50;
       let randomSeed = window.performance.now();
