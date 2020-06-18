@@ -6,14 +6,14 @@
     <meta charset="utf-8"/>
     <title>maze maze</title>
     <script type="text/javascript">
-      const TILE_SIZE = 8;
+      const TILE_SIZE = 10;
       const TOP_MARGIN = 2 * TILE_SIZE;
       const LEFT_MARGIN = TILE_SIZE;
       // In recursive version:
       // 192x100 dies
       // 191x100 ok
-      const MAZE_ROWS = 80;
-      const MAZE_COLS = 100;
+      const MAZE_ROWS = 50;
+      const MAZE_COLS = 50;
       let randomSeed = window.performance.now();
       let start = [Math.floor(cheesyRandom()*MAZE_COLS), 0];
       let finish = [Math.floor(cheesyRandom()*MAZE_COLS), MAZE_ROWS-1];
@@ -37,6 +37,10 @@
         }
       }
 
+      let mazeTree = new Array();
+      console.log("init, mt len: " + mazeTree.length);
+      let mazeTreeCells = 0;
+
       // Statuses we keep for cells as we "dig" out path through maze
       const UNVISITED = 1;  // haven't been here yet
       const VISITED = 2;    // been here, but haven't tried all directions
@@ -48,6 +52,7 @@
           cellStatus[col][row] = UNVISITED;
         }
       }
+      let depth = 0;
 
       function getDigOrder() {
         // randomly ordered
@@ -61,46 +66,122 @@
         return directions;
       }
 
+      function printMazeTree() {
+        console.log("-------------------------------");
+        for (let i=0; i<mazeTree.length; i++) {
+          //console.log("mt[" + i + "]" + mazeTree[i]);
+          console.log(mazeTree[i]);
+        }
+      }
 
-      function digCell(col, row) {
-        let ordering = getDigOrder();
+      // starting at (col, row),
+      // "dig" through the grid, creating mazeTree[] through cells
+      function digMaze(col, row) {
+        //console.log("digging at : " + col + ", " + row);
+        let depth = 0;
+        let numCellsDone = 0;
+        let numCellsDug = 0;
+        let currentCell = 0;  // index into mazeTree[]
+        mazeTree.push({'col': col, 'row': row, 'parent': -1, 'digOrder': getDigOrder(), 'digs': 0, 'depth':depth});
         cellStatus[col][row] = VISITED;
-        for (let i = 0; i < 4; i++) {
-          if (ordering[i] == 'U') {
+        numCellsDug = 1;
+
+        // each time through the loop:
+        // we pick an already-VISITED (but not DONE) cell and dig in a new direction
+        // if no direction is available, then mark DONE
+        // end-of-loop invariants
+        //   mazeTree[] up-to-date and consistent
+        //   if cell is DONE, so are all children, out to leaves
+        while (numCellsDone < MAZE_ROWS*MAZE_COLS) {
+          //console.log("cc: " + currentCell + " mazetree len: " + mazeTree.length);
+          //console.log("cellsDone: " + numCellsDone + ", cells dug: " + numCellsDug);
+          //printMazeTree();
+          let row = mazeTree[currentCell].row;
+          let digs = mazeTree[currentCell].digs;
+          let digOrder = mazeTree[currentCell].digOrder;
+          let dir = digOrder[digs];
+          let depth = mazeTree[currentCell].depth;
+          //console.log("cur: " + currentCell + ", dir: " + dir + ", digs: " + digs + ", depth: " + depth);
+          // get a direction, see if we can dig
+          if (dir == 'U') {
+            col = mazeTree[currentCell].col;  //
+            row = mazeTree[currentCell].row;  //
+            //console.log("Testing U from: (" + col + "," + row + ")");
+            mazeTree[currentCell].digs += 1;
             let digCol = col;
             let digRow = row-1;
             if (digRow >= 0 && cellStatus[digCol][digRow] == UNVISITED) {
               removeTopWall(col, row);
-              digCell(digCol, digRow);
+              //console.log("Digging U to: (" + digCol + "," + digRow + ")");
+              mazeTree.push({'col': digCol, 'row': digRow, 'parent': currentCell, 'digs': 0, 'digOrder': getDigOrder(), 'depth': depth+1});
+              cellStatus[digCol][digRow] = VISITED;
+              numCellsDug += 1;
+              currentCell = mazeTree.length-1;
             }
-          }
-          if (ordering[i] == 'D') {
+          } else if (dir == 'D') {
+            col = mazeTree[currentCell].col;  //
+            row = mazeTree[currentCell].row;  //
+            //console.log("Testing D from: (" + col + "," + row + ")");
+            mazeTree[currentCell].digs += 1;
             let digCol = col;
             let digRow = row+1;
             if (digRow < MAZE_ROWS && cellStatus[digCol][digRow] == UNVISITED) {
               removeBottomWall(col, row);
-              digCell(digCol, digRow);
+              //console.log("Digging D to: (" + digCol + "," + digRow + ")");
+              mazeTree.push({'col': digCol, 'row': digRow, 'parent': currentCell, 'digs': 0, 'digOrder': getDigOrder(), 'depth': depth+1});
+              cellStatus[digCol][digRow] = VISITED;
+              numCellsDug += 1;
+              currentCell = mazeTree.length-1;
             }
-          }
-          if (ordering[i] == 'L') {
+          } else if (dir == 'L') {
+            col = mazeTree[currentCell].col;  //
+            row = mazeTree[currentCell].row;  //
+            //console.log("Testing L from: (" + col + "," + row + ")");
+            mazeTree[currentCell].digs += 1;
             let digCol = col-1;
             let digRow = row;  
             if (digCol >= 0 && cellStatus[digCol][digRow] == UNVISITED) {
               removeLeftWall(col, row);
-              digCell(digCol, digRow);
+              //console.log("Digging L to: (" + digCol + "," + digRow + ")");
+              mazeTree.push({'col': digCol, 'row': digRow, 'parent': currentCell, 'digs': 0, 'digOrder': getDigOrder(), 'depth': depth+1});
+              cellStatus[digCol][digRow] = VISITED;
+              numCellsDug += 1;
+              currentCell = mazeTree.length-1;
             }
-          }
-          if (ordering[i] == 'R') {
+          } else if (dir == 'R') {
+            col = mazeTree[currentCell].col;  //
+            row = mazeTree[currentCell].row;  //
+            //console.log("Testing R from: (" + col + "," + row + ")");
+            mazeTree[currentCell].digs += 1;
             let digCol = col+1;
             let digRow = row;
             if (digCol < MAZE_COLS && cellStatus[digCol][digRow] == UNVISITED) {
               removeRightWall(col, row);
-              digCell(digCol, digRow);
+              //console.log("Digging R to: (" + digCol + "," + digRow + ")");
+              mazeTree.push({'col': digCol, 'row': digRow, 'parent': currentCell, 'digs': 0, 'digOrder': getDigOrder(), 'depth': depth+1});
+              cellStatus[digCol][digRow] = VISITED;
+              numCellsDug += 1;
+              currentCell = mazeTree.length-1;
+            }
+          }
+          // this will only happen after trying all 4 directions from this cell
+          if (mazeTree[currentCell].digs == 4) {
+            col = mazeTree[currentCell].col;
+            row = mazeTree[currentCell].row;
+            //console.log("backtracking from: (" + col + "," + row + ")");
+            cellStatus[mazeTree[currentCell].col][mazeTree[currentCell].row] = DONE;
+            numCellsDone += 1;
+            if (mazeTree[currentCell].parent == -1) {
+              console.log("should be done!");
+            } else {
+              currentCell = mazeTree[currentCell].parent;
+              col = mazeTree[currentCell].col;
+              row = mazeTree[currentCell].row;
+              //console.log("  backtracked to: (" + col + "," + row + ")");
+              //printMazeTree();
             }
           }
         }
-        cellStatus[col][row] = DONE;
-        return;
       }
 
       function removeTopWall(col, row) {
@@ -122,7 +203,7 @@
       function makeMaze() {
         removeTopWall(start[0], start[1]);
         removeBottomWall(finish[0], finish[1]);
-        digCell(start[0], start[1]);
+        digMaze(start[0], start[1]);
       }
 
       function makeAndDraw() {
