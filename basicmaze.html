@@ -17,11 +17,22 @@
       // 2500x2500 runs fine, takes about 12 sec
       // max is > 6,250,000 cells
       // (on my machine)
-      const MAZE_ROWS = 50;
-      const MAZE_COLS = 50;
+      const MAZE_ROWS = 100;
+      const MAZE_COLS = 100;
       let randomSeed = window.performance.now();
       let start = [Math.floor(cheesyRandom()*MAZE_COLS), 0];
       let finish = [Math.floor(cheesyRandom()*MAZE_COLS), MAZE_ROWS-1];
+
+      // We will have patterns in the "flow"
+      //let pattern = "random";
+      let pattern = "checkered";
+      //let pattern = "zigzag";
+
+      let checkerSize = 20;
+      let checkerPercent = 0.95;
+
+      let zigzagSize = 10;
+      let zigzagPercent = 0.98;
 
       // maze indexed [col,row] or [x,y]
       // top left cell is [0,0]
@@ -59,16 +70,68 @@
       }
       let depth = 0;
 
-      function getDigOrder() {
-        // randomly ordered
-        let directions = ['U', 'D', 'L', 'R'];
-        for (let i=0; i<3; i++) {
-          let dir = directions[i];
-          let j = randomBetween(i,3);
-          directions[i] = directions[j];
-          directions[j] = dir;
+      function getDigOrder(col, row) {
+        if (pattern == "random") {
+          // randomly ordered
+          let directions = ['U', 'D', 'L', 'R'];
+          for (let i=0; i<3; i++) {
+            let dir = directions[i];
+            let j = randomBetween(i,3);
+            directions[i] = directions[j];
+            directions[j] = dir;       
+            return directions;  
+          } 
+        } else if (pattern == "checkered") {
+          // do a "checkered" pattern
+          // prefer U/D or L/R in different regions
+          let directions = ['U', 'D', 'L', 'R'];  // dummy vals for initialization
+          let UD = (Math.random() > checkerPercent);
+          if ((Math.floor(col/checkerSize) % 2)==(Math.floor(row/checkerSize) % 2)) {
+            // prefer U/D in this checkered square
+            UD = (Math.random() < checkerPercent);
+          }
+          if (!UD) {
+            // Swap U,D for L, R
+            directions = ['L', 'R', 'U', 'D'];
+          }
+          // now randomly choose L vs R, U vs D by swapping
+          if (Math.random() < 0.5) {
+            let temp = directions[0];
+            directions[0] = directions[1];
+            directions[1] = temp;
+          }
+          if (Math.random() < 0.5) {
+            let temp = directions[2];
+            directions[2] = directions[3];
+            directions[3] = temp;
+          }
+          return directions;
+        } else if (pattern == "zigzag") {
+          // do a "zigzag" pattern
+          // prefer U/D or L/R in different diagonal stripes
+          let directions = ['U', 'D', 'L', 'R'];  // dummy vals for initialization
+          let UD = (Math.random() > zigzagPercent);
+          if ((Math.floor((col+row)/(2*zigzagSize)) % 2) == 0) {
+            // prefer U/D in this diagonal stripe
+            UD = (Math.random() < zigzagPercent);
+          }
+          if (!UD) {
+            // Swap U,D for L, R
+            directions = ['L', 'R', 'U', 'D'];
+          }
+          // now randomly choose L vs R, U vs D by swapping
+          if (Math.random() < 0.5) {
+            let temp = directions[0];
+            directions[0] = directions[1];
+            directions[1] = temp;
+          }
+          if (Math.random() < 0.5) {
+            let temp = directions[2];
+            directions[2] = directions[3];
+            directions[3] = temp;
+          }
+          return directions;
         }
-        return directions;
       }
 
       function printMazeTree() {
@@ -87,7 +150,7 @@
         let numCellsDone = 0;
         let numCellsDug = 0;
         let currentCell = 0;  // index into mazeTree[]
-        mazeTree.push({'col': col, 'row': row, 'parent': -1, 'digOrder': getDigOrder(), 'digs': 0, 'depth':depth});
+        mazeTree.push({'col': col, 'row': row, 'parent': -1, 'digOrder': getDigOrder(col, row), 'digs': 0, 'depth':depth});
         cellStatus[col][row] = VISITED;
         numCellsDug = 1;
 
@@ -118,7 +181,7 @@
             if (digRow >= 0 && cellStatus[digCol][digRow] == UNVISITED) {
               removeTopWall(col, row);
               //console.log("Digging U to: (" + digCol + "," + digRow + ")");
-              mazeTree.push({'col': digCol, 'row': digRow, 'parent': currentCell, 'digs': 0, 'digOrder': getDigOrder(), 'depth': depth+1});
+              mazeTree.push({'col': digCol, 'row': digRow, 'parent': currentCell, 'digs': 0, 'digOrder': getDigOrder(col, row), 'depth': depth+1});
               cellStatus[digCol][digRow] = VISITED;
               numCellsDug += 1;
               currentCell = mazeTree.length-1;
@@ -133,7 +196,7 @@
             if (digRow < MAZE_ROWS && cellStatus[digCol][digRow] == UNVISITED) {
               removeBottomWall(col, row);
               //console.log("Digging D to: (" + digCol + "," + digRow + ")");
-              mazeTree.push({'col': digCol, 'row': digRow, 'parent': currentCell, 'digs': 0, 'digOrder': getDigOrder(), 'depth': depth+1});
+              mazeTree.push({'col': digCol, 'row': digRow, 'parent': currentCell, 'digs': 0, 'digOrder': getDigOrder(col, row), 'depth': depth+1});
               cellStatus[digCol][digRow] = VISITED;
               numCellsDug += 1;
               currentCell = mazeTree.length-1;
@@ -148,7 +211,7 @@
             if (digCol >= 0 && cellStatus[digCol][digRow] == UNVISITED) {
               removeLeftWall(col, row);
               //console.log("Digging L to: (" + digCol + "," + digRow + ")");
-              mazeTree.push({'col': digCol, 'row': digRow, 'parent': currentCell, 'digs': 0, 'digOrder': getDigOrder(), 'depth': depth+1});
+              mazeTree.push({'col': digCol, 'row': digRow, 'parent': currentCell, 'digs': 0, 'digOrder': getDigOrder(col, row), 'depth': depth+1});
               cellStatus[digCol][digRow] = VISITED;
               numCellsDug += 1;
               currentCell = mazeTree.length-1;
@@ -163,7 +226,7 @@
             if (digCol < MAZE_COLS && cellStatus[digCol][digRow] == UNVISITED) {
               removeRightWall(col, row);
               //console.log("Digging R to: (" + digCol + "," + digRow + ")");
-              mazeTree.push({'col': digCol, 'row': digRow, 'parent': currentCell, 'digs': 0, 'digOrder': getDigOrder(), 'depth': depth+1});
+              mazeTree.push({'col': digCol, 'row': digRow, 'parent': currentCell, 'digs': 0, 'digOrder': getDigOrder(col, row), 'depth': depth+1});
               cellStatus[digCol][digRow] = VISITED;
               numCellsDug += 1;
               currentCell = mazeTree.length-1;
