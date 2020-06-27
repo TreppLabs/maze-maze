@@ -6,7 +6,27 @@
     <meta charset="utf-8"/>
     <title>maze maze</title>
     <script type="text/javascript">
-      const TILE_SIZE = 15;
+
+      // Future TODO: objects
+      // Maze
+      //   Maze params
+      //.    Patterns
+      //.    Seed
+      //.    Density 
+      //.    size
+      //   Horiz walls, vert walls
+      //   MazeTree (cells)
+      //   MazeList
+      // Cell
+      //.  Parent
+      //.  Children
+      //.  Depth from junction
+      //.  Depth from start
+      //.  getRight, etc
+      //.  test/remove walls
+      //.  isJunction
+
+      const TILE_SIZE = 8;
       const TOP_MARGIN = 2 * TILE_SIZE;
       const LEFT_MARGIN = TILE_SIZE;
       // In recursive version:
@@ -18,10 +38,27 @@
       // max is > 6,250,000 cells
       // (on my machine)
       const MAZE_ROWS = 50;
-      const MAZE_COLS = 50;
+      const MAZE_COLS = 80;
+      const VOID_COUNT = 30;
+      const VOID_FACTOR = 5;   // max size as 1/x of total
+      const PENINSULA_COUNT = 22;
+      const PENINSULA_FACTOR = 5;
+
       let randomSeed = window.performance.now();
       let start = [Math.floor(cheesyRandom()*MAZE_COLS), 0];
       let finish = [Math.floor(cheesyRandom()*MAZE_COLS), MAZE_ROWS-1];
+      let finishIndex = -1;
+
+      // We will have patterns in the "flow"
+      // let pattern = "random";
+      // let pattern = "checkered";
+      let pattern = "zigzag";
+
+      let checkerSize = 15;
+      let checkerPercent = 0.95;
+
+      let zigzagSize = 10;
+      let zigzagPercent = 0.95;
 
       // maze indexed [col,row] or [x,y]
       // top left cell is [0,0]
@@ -43,7 +80,7 @@
       }
 
       let mazeTree = new Array();
-      console.log("init, mt len: " + mazeTree.length);
+//      console.log("init, mt len: " + mazeTree.length);
       let mazeTreeCells = 0;
 
       // Statuses we keep for cells as we "dig" out path through maze
@@ -57,18 +94,125 @@
           cellStatus[col][row] = UNVISITED;
         }
       }
-      let depth = 0;
 
-      function getDigOrder() {
-        // randomly ordered
-        let directions = ['U', 'D', 'L', 'R'];
-        for (let i=0; i<3; i++) {
-          let dir = directions[i];
-          let j = randomBetween(i,3);
-          directions[i] = directions[j];
-          directions[j] = dir;
+
+      // make maze more interesting by removing/adding blocks of cells
+      function markBlocks(numBlocks, blockSize, status) {
+        for (let i=0; i<numBlocks; i+=1) {
+          let blockHeight = 1+Math.floor(Math.random() * (blockSize-1));
+          let blockWidth = 1+Math.floor(Math.random() * (blockSize-1));
+          let blockFirstCol = Math.floor(Math.random()*MAZE_COLS - blockWidth/2);
+          let blockFirstRow = Math.floor(Math.random()*MAZE_ROWS - blockHeight/2);
+          for (let c=blockFirstCol; c<blockFirstCol+blockWidth; c+=1) {
+            for (let r=blockFirstRow; r<blockFirstRow+blockHeight; r+=1) {
+              // only remove/add within maze boundary
+              if (c>=0 && c < MAZE_COLS && r>=0 && r<MAZE_ROWS){
+                cellStatus[c][r] = status;
+              }
+            }
+          }
         }
-        return directions;
+      }
+
+      // do clean-up before digging maze -- get any "dead" walls
+      // (walls between 2 "DONE" cells or between DONE and out-of-bounds)
+      function removeWalls() {
+        for (let c=0; c<MAZE_COLS; c+=1) {
+          for (let r=0; r<MAZE_ROWS; r+=1) {
+            // if I am marked DONE, then erase walls to any DONE nbrs
+            if (cellStatus[c][r] == DONE) {
+              // console.log("testing at: " + c + "," + r );
+              if (c-1 < 0) {
+                removeLeftWall(c, r);
+              } else if (cellStatus[c-1][r] == DONE) {
+                removeLeftWall(c, r);
+              }
+
+              if (r-1 < 0) {
+                removeTopWall(c, r);
+              } else if (cellStatus[c][r-1] == DONE) {
+                removeTopWall(c, r);
+              } 
+
+              if (r+1 == MAZE_ROWS) {
+                removeBottomWall(c, r);
+              } else if (cellStatus[c][r+1] == DONE) {
+                removeBottomWall(c, r);
+              }
+
+              if (c+1 == MAZE_COLS) {
+                removeRightWall(c, r);
+              } else if (cellStatus[c+1][r] == DONE) {
+                removeRightWall(c, r);
+              }
+            }
+          }
+        }
+      }
+
+
+      function getDigOrder(col, row) {
+        if (pattern == "random") {
+          // randomly ordered
+          let directions = ['U', 'D', 'L', 'R'];
+          for (let i=0; i<3; i++) {
+            let dir = directions[i];
+            let j = randomBetween(i,3);
+            directions[i] = directions[j];
+            directions[j] = dir;       
+            return directions;  
+          } 
+        } else if (pattern == "checkered") {
+          // do a "checkered" pattern
+          // prefer U/D or L/R in different regions
+          let directions = ['U', 'D', 'L', 'R'];  // dummy vals for initialization
+          let UD = (Math.random() > checkerPercent);
+          if ((Math.floor(col/checkerSize) % 2)==(Math.floor(row/checkerSize) % 2)) {
+            // prefer U/D in this checkered square
+            UD = (Math.random() < checkerPercent);
+          }
+          if (!UD) {
+            // Swap U,D for L, R
+            directions = ['L', 'R', 'U', 'D'];
+          }
+          // now randomly choose L vs R, U vs D by swapping
+          if (Math.random() < 0.5) {
+            let temp = directions[0];
+            directions[0] = directions[1];
+            directions[1] = temp;
+          }
+          if (Math.random() < 0.5) {
+            let temp = directions[2];
+            directions[2] = directions[3];
+            directions[3] = temp;
+          }
+          return directions;
+        } else if (pattern == "zigzag") {
+          // do a "zigzag" pattern
+          // prefer U/D or L/R in different diagonal stripes
+          let directions = ['U', 'D', 'L', 'R'];  // dummy vals for initialization
+          let UD = (Math.random() > zigzagPercent);
+          if ((Math.floor((col+row)/(2*zigzagSize)) % 2) == 0) {
+            // prefer U/D in this diagonal stripe
+            UD = (Math.random() < zigzagPercent);
+          }
+          if (!UD) {
+            // Swap U,D for L, R
+            directions = ['L', 'R', 'U', 'D'];
+          }
+          // now randomly choose L vs R, U vs D by swapping
+          if (Math.random() < 0.5) {
+            let temp = directions[0];
+            directions[0] = directions[1];
+            directions[1] = temp;
+          }
+          if (Math.random() < 0.5) {
+            let temp = directions[2];
+            directions[2] = directions[3];
+            directions[3] = temp;
+          }
+          return directions;
+        }
       }
 
       function printMazeTree() {
@@ -82,12 +226,11 @@
       // starting at (col, row),
       // "dig" through the grid, creating mazeTree[] through cells
       function digMaze(col, row) {
-        //console.log("digging at : " + col + ", " + row);
         let depth = 0;
         let numCellsDone = 0;
         let numCellsDug = 0;
         let currentCell = 0;  // index into mazeTree[]
-        mazeTree.push({'col': col, 'row': row, 'parent': -1, 'digOrder': getDigOrder(), 'digs': 0, 'depth':depth});
+        mazeTree.push({'col': col, 'row': row, 'parent': -1, 'digOrder': getDigOrder(col, row), 'digs': 0, 'depth':depth});
         cellStatus[col][row] = VISITED;
         numCellsDug = 1;
 
@@ -98,27 +241,26 @@
         //   mazeTree[] up-to-date and consistent
         //   if cell is DONE, so are all children, out to leaves
         while (numCellsDone < MAZE_ROWS*MAZE_COLS) {
-          //console.log("cc: " + currentCell + " mazetree len: " + mazeTree.length);
-          //console.log("cellsDone: " + numCellsDone + ", cells dug: " + numCellsDug);
           //printMazeTree();
-          let row = mazeTree[currentCell].row;
+
+          if (finish[0] == mazeTree[currentCell].col && finish[1] == mazeTree[currentCell].row) {
+            finishIndex = currentCell;
+            console.log('Found finish at ', finish[0], finish[1], 'finishIndex', finishIndex);
+          }
           let digs = mazeTree[currentCell].digs;
           let digOrder = mazeTree[currentCell].digOrder;
           let dir = digOrder[digs];
           let depth = mazeTree[currentCell].depth;
-          //console.log("cur: " + currentCell + ", dir: " + dir + ", digs: " + digs + ", depth: " + depth);
           // get a direction, see if we can dig
           if (dir == 'U') {
             col = mazeTree[currentCell].col;  //
             row = mazeTree[currentCell].row;  //
-            //console.log("Testing U from: (" + col + "," + row + ")");
             mazeTree[currentCell].digs += 1;
             let digCol = col;
             let digRow = row-1;
             if (digRow >= 0 && cellStatus[digCol][digRow] == UNVISITED) {
               removeTopWall(col, row);
-              //console.log("Digging U to: (" + digCol + "," + digRow + ")");
-              mazeTree.push({'col': digCol, 'row': digRow, 'parent': currentCell, 'digs': 0, 'digOrder': getDigOrder(), 'depth': depth+1});
+              mazeTree.push({'col': digCol, 'row': digRow, 'parent': currentCell, 'digs': 0, 'digOrder': getDigOrder(col, row), 'depth': depth+1});
               cellStatus[digCol][digRow] = VISITED;
               numCellsDug += 1;
               currentCell = mazeTree.length-1;
@@ -126,14 +268,12 @@
           } else if (dir == 'D') {
             col = mazeTree[currentCell].col;  //
             row = mazeTree[currentCell].row;  //
-            //console.log("Testing D from: (" + col + "," + row + ")");
             mazeTree[currentCell].digs += 1;
             let digCol = col;
             let digRow = row+1;
             if (digRow < MAZE_ROWS && cellStatus[digCol][digRow] == UNVISITED) {
               removeBottomWall(col, row);
-              //console.log("Digging D to: (" + digCol + "," + digRow + ")");
-              mazeTree.push({'col': digCol, 'row': digRow, 'parent': currentCell, 'digs': 0, 'digOrder': getDigOrder(), 'depth': depth+1});
+              mazeTree.push({'col': digCol, 'row': digRow, 'parent': currentCell, 'digs': 0, 'digOrder': getDigOrder(col, row), 'depth': depth+1});
               cellStatus[digCol][digRow] = VISITED;
               numCellsDug += 1;
               currentCell = mazeTree.length-1;
@@ -141,14 +281,12 @@
           } else if (dir == 'L') {
             col = mazeTree[currentCell].col;  //
             row = mazeTree[currentCell].row;  //
-            //console.log("Testing L from: (" + col + "," + row + ")");
             mazeTree[currentCell].digs += 1;
             let digCol = col-1;
             let digRow = row;  
             if (digCol >= 0 && cellStatus[digCol][digRow] == UNVISITED) {
               removeLeftWall(col, row);
-              //console.log("Digging L to: (" + digCol + "," + digRow + ")");
-              mazeTree.push({'col': digCol, 'row': digRow, 'parent': currentCell, 'digs': 0, 'digOrder': getDigOrder(), 'depth': depth+1});
+              mazeTree.push({'col': digCol, 'row': digRow, 'parent': currentCell, 'digs': 0, 'digOrder': getDigOrder(col, row), 'depth': depth+1});
               cellStatus[digCol][digRow] = VISITED;
               numCellsDug += 1;
               currentCell = mazeTree.length-1;
@@ -156,14 +294,12 @@
           } else if (dir == 'R') {
             col = mazeTree[currentCell].col;  //
             row = mazeTree[currentCell].row;  //
-            //console.log("Testing R from: (" + col + "," + row + ")");
             mazeTree[currentCell].digs += 1;
             let digCol = col+1;
             let digRow = row;
             if (digCol < MAZE_COLS && cellStatus[digCol][digRow] == UNVISITED) {
               removeRightWall(col, row);
-              //console.log("Digging R to: (" + digCol + "," + digRow + ")");
-              mazeTree.push({'col': digCol, 'row': digRow, 'parent': currentCell, 'digs': 0, 'digOrder': getDigOrder(), 'depth': depth+1});
+              mazeTree.push({'col': digCol, 'row': digRow, 'parent': currentCell, 'digs': 0, 'digOrder': getDigOrder(col, row), 'depth': depth+1});
               cellStatus[digCol][digRow] = VISITED;
               numCellsDug += 1;
               currentCell = mazeTree.length-1;
@@ -173,21 +309,31 @@
           if (mazeTree[currentCell].digs == 4) {
             col = mazeTree[currentCell].col;
             row = mazeTree[currentCell].row;
-            //console.log("backtracking from: (" + col + "," + row + ")");
             cellStatus[mazeTree[currentCell].col][mazeTree[currentCell].row] = DONE;
             numCellsDone += 1;
             if (mazeTree[currentCell].parent == -1) {
-              console.log("should be done!");
+              // done!
             } else {
               currentCell = mazeTree[currentCell].parent;
               col = mazeTree[currentCell].col;
               row = mazeTree[currentCell].row;
-              //console.log("  backtracked to: (" + col + "," + row + ")");
-              //printMazeTree();
             }
           }
         }
       }
+
+
+      // function getUrlParameter(sParam) {
+      //   var sPageUrl = window.location.search.substring(1);
+      //   var sUrlVariables = sPageUrl.split('&');
+      //   for (var i = 0; i < sUrlVariables.length; i++) {
+      //     var sParameterName = sUrlVariables[i].split('=');
+      //     if (sParameterName[0] == sParam) {
+      //         return sParameterName[1];
+      //     }
+      //   }
+      // }​
+
 
       function removeTopWall(col, row) {
         horizWalls[col][row] = 0;
@@ -212,8 +358,22 @@
       }
 
       function makeAndDraw() {
+        // let doAble = false;
+        // while (!doAble) {
+          // digVoids();
+          markBlocks(VOID_COUNT, MAZE_ROWS/VOID_FACTOR, DONE);
+          markBlocks(PENINSULA_COUNT, MAZE_ROWS/PENINSULA_FACTOR, UNVISITED);
+
+          removeWalls();
+          // if (testPath() == true) {
+            // doAble = true;
+        //   // } else {
+        //   //   refillVoids();
+        //   // }
+        // }
         makeMaze();
         drawMaze();
+        // drawSolution();
       }
 
       // create path for downward-pointing arrow
@@ -286,6 +446,43 @@
         }
       }
 
+      
+      function drawSolution() {
+
+        var canvas = document.getElementById('mazeFrame');
+        var canvasWidth = canvas.width;
+        var canvasHeight = canvas.height;
+        if (canvas.getContext) {
+          var ctx = canvas.getContext('2d');
+          // start at finish, work your way back
+          let iter = 0;
+          let backAtStart = false;
+          let currentCellIndex = finishIndex;
+          while(!backAtStart && iter < 10000000) {
+            iter += 1;
+            let previousCellIndex = mazeTree[currentCellIndex].parent; 
+            // set x,y to middle of current cell [col][row]
+            let curCol = mazeTree[currentCellIndex].col;
+            let curRow = mazeTree[currentCellIndex].row;
+            let prevCol = mazeTree[previousCellIndex].col;
+            let prevRow = mazeTree[previousCellIndex].row;
+            let curX = LEFT_MARGIN + curCol * TILE_SIZE + TILE_SIZE/2;
+            let curY = TOP_MARGIN  + curRow * TILE_SIZE + TILE_SIZE/2;
+            let prevX = LEFT_MARGIN + prevCol * TILE_SIZE + TILE_SIZE/2;
+            let prevY = TOP_MARGIN  + prevRow * TILE_SIZE + TILE_SIZE/2;
+            ctx.beginPath();
+            ctx.strokeStyle = '#FF0000';
+            ctx.moveTo(curX, curY);
+            ctx.lineTo(prevX, prevY);
+            ctx.stroke();
+            if (mazeTree[previousCellIndex].col == start[0] && mazeTree[previousCellIndex].row == start[1]) {
+              backAtStart = true;
+              console.log('hit start at index' , previousCellIndex);
+            }
+            currentCellIndex = previousCellIndex;
+          }
+        }
+      }
 
       // low-budget 'random' generator
       // found this on Stack Overflow
@@ -298,6 +495,315 @@
       function randomBetween(lo, hi) {
         return Math.floor(lo + cheesyRandom()*(1+hi-lo));
       }
+
+      function doink() {
+          var sound = document.getElementById("doink");
+          sound.play();
+      }
+
+      function jump() {
+          var sound = document.getElementById("jump");
+          sound.play();
+      }
+
+      function tada() {
+        var sound = document.getElementById("tada");
+        sound.play();
+      }
+
+      function wallLeft(col, row) {
+         return vertWalls[col][row];
+      }
+      function wallRight(col, row) {
+         return vertWalls[col+1][row];
+      }
+      function wallUp(col, row) {
+         return horizWalls[col][row];
+      }
+      function wallDown(col, row) {
+         return horizWalls[col][row+1];
+      }
+
+      // true if more than 2 ways out (or start or finish)
+      function isJunction(col, row) {
+        console.log('isJunction at: ' + col + ", " + row + "nbrCount: " + neighborCount(col, row));
+        if (col == start[0] && row == start[1]) {
+          console.log("start");
+          return true;
+        }
+        if (col == finish[0] && row == finish[1]) {
+          console.log("finish");
+          return true;
+        }
+
+        // junction has neighborcount 3 or 4
+        return (neighborCount(col, row) > 2);
+      }
+
+      function neighborCount(col, row) {
+        let nbrCount = 4;
+        if (wallLeft(col, row)) {nbrCount -= 1;}
+        if (wallUp(col, row)) {nbrCount -= 1;}
+        if (wallRight(col, row)) {nbrCount -= 1;}
+        if (wallDown(col, row)) {nbrCount -= 1;}
+        return nbrCount
+      }
+
+      function isDeadEnd(col, row) {
+        return (neighborCount(col, row) < 2);
+      }
+
+      // keep track of user navigation through maze
+      let userCol = start[0];
+      let userRow = start[1];
+
+      function testMoveUp(col, row) {
+        if (row == 0) {
+          return false;
+        } else if (wallUp(col, row)) {
+          return false;
+        } else {
+          return true;
+        }
+      }
+      function testMoveDown(col, row) {
+        if (row == MAZE_ROWS) {
+          return false;
+        } else if (wallDown(col, row)) {
+          return false;
+        } else {
+          return true;
+        }
+      }
+      function testMoveLeft(col, row) {
+        if (col == 0) {
+          return false;
+        } else if (wallLeft(col, row)) {
+          return false;
+        } else {
+          return true;
+        }
+      }
+      function testMoveRight(col, row) {
+        if (col == MAZE_COLS) {
+          return false;
+        } else if (wallRight(col, row)) {
+          return false;
+        } else {
+          return true;
+        }
+      }
+
+      function isFinish(col, row) {
+        return (col == finish[0] && row == finish[1]);
+      }
+
+      function colToX(col) {
+        return LEFT_MARGIN + col*TILE_SIZE + TILE_SIZE/2;
+      }
+      function rowToY(row) {
+        return TOP_MARGIN + row*TILE_SIZE + TILE_SIZE/2;
+      }
+
+      function drawPathSegment(col1, row1, col2, row2, color) {
+        let canvas = document.getElementById('mazeFrame');
+        let ctx = canvas.getContext('2d');
+        ctx.lineWidth = TILE_SIZE/2;
+        ctx.beginPath();
+        ctx.strokeStyle = color;
+        ctx.moveTo(colToX(col1), rowToY(row1));
+        ctx.lineTo(colToX(col2), rowToY(row2));
+        ctx.stroke();    
+      }
+
+      function tryMove(dir, col, row) {
+        if (dir == "up") return tryMoveUp(col, row);
+        if (dir == "down") return tryMoveDown(col, row);
+        if (dir == "left") return tryMoveLeft(col, row);
+        if (dir == "right") return tryMoveRight(col, row);
+      }
+
+      // stupid little functions that I think I need
+      // because Cell isn't an object
+      function colMove(dir, col) {
+        if (dir == "right") return col+1;
+        if (dir == "left") return col-1;
+        return col;
+      }
+      function rowMove(dir, row) {
+        if (dir == "up") return row-1;
+        if (dir == "down") return row+1;
+        return row;
+      }
+
+
+      // run as far as you can in "dir"
+      // stop at wall, junction, start, or finish
+      // return true only if you moved
+      function trySprint(dir, col, row) {
+        let stopped = false; // stopped means hit a wall or junction or start/finish after move
+        let moved = false;
+
+        while (!stopped) {
+          if (tryMove(dir, col, row)) {
+            col = colMove(dir, col);
+            row = rowMove(dir, row);
+            moved = true;
+            if (isJunction(col, row)) {
+              stopped = true;
+            }
+          } else {
+            stopped = true;
+          }
+        }
+        return moved;
+      }
+
+      function oppDir(dir) {
+        if (dir == "up") return "down";
+        if (dir == "down") return "up";
+        if (dir == "left") return "right";
+        if (dir == "right") return "left";
+      }
+
+      function untriedDirection(dirs) {
+        if (!dirs.has("down")) return "down";
+        if (!dirs.has("up")) return "up";
+        if (!dirs.has("left")) return "left";
+        if (!dirs.has("right")) return "right";
+        return "none";
+      }
+
+      // starting in direction "dir", run to next "junction"
+      // turning corners if necessary
+      // return true if you moved
+      function tryRun(dir, col, row) {
+        let dirsTried = new Set();
+        let stopped = false;
+        let moved = false;
+
+        if (trySprint(dir, col, row)) {
+          moved = true;
+          col = userCol;
+          row = userRow;
+          if (isJunction(col, row)) {
+            // stop running if we reached a junction
+            return true;
+          }
+        } else {
+          return false; // didn't move at all
+        }
+
+        // at this point, our first sprint moved us, but ran into a wall
+        // don't retry same direction, don't go backwards
+        dirsTried.add(dir);
+        dirsTried.add(oppDir(dir));
+        let iter = 0;
+        while (dirsTried.size < 4 && iter < 100) {
+          iter += 1;
+          // pick a direction we haven't tried, continue
+          // if can't move, add to dirsTried,
+          // if moved, quit if at junction, or reset dirs tried to dir & opp
+          dir = untriedDirection(dirsTried);
+          if (trySprint(dir, col, row)) {
+            moved = true;
+            col = userCol;
+            row = userRow;
+            dirsTried.clear();
+            dirsTried.add(dir);
+            dirsTried.add(oppDir(dir));
+            if (isJunction(col, row)) {
+              // stop running if we reached a junction
+              return true;
+            }
+          } else {
+            dirsTried.add(dir);
+          }
+        }
+      }
+
+
+      function tryMoveUp(col, row) {
+        if(testMoveUp(col, row)) {
+          jump();
+          drawPathSegment(col, row, col, row-1, "#00FF33");
+          userRow -= 1;
+          if (isFinish(col, row-1)) {
+            tada();
+          }
+          return true;  // successfully moved up
+        } else {
+          doink();
+          return false;  // couldn't move up
+        }  
+      }
+
+      function tryMoveDown(col, row) {
+        if(testMoveDown(col, row)) {
+          jump();
+          drawPathSegment(col, row, col, row+1, "#00FF33");
+          userRow += 1;
+          if (isFinish(col, row+1)) {
+            tada();
+          }
+          return true;
+        } else {
+          doink();
+          return false;
+        }
+      }
+
+      function tryMoveLeft(col, row) {
+        if(testMoveLeft(col, row)) {
+          jump();
+          drawPathSegment(col, row, col-1, row, "#00FF33");
+          userCol -= 1;
+          if (isFinish(col-1, row)) {
+            tada();
+          }
+          return true;
+        } else {
+          doink();
+          return false;
+        }
+      }
+
+      function tryMoveRight(col, row) {          
+        if(testMoveRight(col, row)) {
+          jump();
+          drawPathSegment(col, row, col+1, row, "#00FF33");
+          userCol += 1;
+          if (isFinish(col+1, row)) {
+            tada();
+          }
+          return true;
+        } else {
+          doink();
+          return false;
+        }
+      }
+
+
+      // screen interaction, etc
+      document.onkeydown = checkKey;
+      function checkKey(e) {
+        e = e || window.event;
+        if (e.keyCode == '38') {
+          tryRun("up", userCol, userRow);
+        }
+        else if (e.keyCode == '40') {
+          tryRun("down", userCol, userRow);
+        }
+        else if (e.keyCode == '37') {
+          tryRun("left", userCol, userRow);
+        }
+        else if (e.keyCode == '39') {
+          tryRun("right", userCol, userRow);
+        }
+      }
+
+
+
 
     </script>
     <style type="text/css">
@@ -313,6 +819,12 @@
         margin: 20px;
       }
     </style>
+    <!-- sounds downloaded from here: https://www.soundjay.com/button-sounds-1.html -->
+    <audio id="doink" src="button-33a.mp3" autoplay="false" ></audio>
+    <audio id="jump" src="button-19.mp3" autoplay="false" ></audio>
+    <audio id="tada" src="dream-harp-06.mp3" autoplay="false" ></audio>
+
+
   </head>
 
 
@@ -321,7 +833,7 @@
     <div id="main">
       <div class="frame">
         <div class="maze">
-          <canvas id="mazeFrame" width="1000" height="800"></canvas>
+          <canvas id="mazeFrame" width="800" height="500"></canvas>
         </div>
         <div class="controls">
           controls could go here
