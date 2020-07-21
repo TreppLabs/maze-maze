@@ -26,7 +26,7 @@
       //.  test/remove walls
       //.  isJunction
 
-      const TILE_SIZE = 8;
+      const TILE_SIZE = 20;
       const TOP_MARGIN = 2 * TILE_SIZE;
       const LEFT_MARGIN = TILE_SIZE;
       // In recursive version:
@@ -37,8 +37,8 @@
       // 2500x2500 runs fine, takes about 12 sec
       // max is > 6,250,000 cells
       // (on my machine)
-      const MAZE_ROWS = 50;
-      const MAZE_COLS = 80;
+      const MAZE_ROWS = 20;
+      const MAZE_COLS = 30;
       const VOID_COUNT = 30;
       const VOID_FACTOR = 5;   // max size as 1/x of total
       const PENINSULA_COUNT = 22;
@@ -443,6 +443,7 @@
               }
             }
           }
+          drawUserSpot();
         }
       }
 
@@ -605,15 +606,33 @@
         return TOP_MARGIN + row*TILE_SIZE + TILE_SIZE/2;
       }
 
-      function drawPathSegment(col1, row1, col2, row2, color) {
+      function drawPathSegment(col1, row1, col2, row2, color, direction) {
         let canvas = document.getElementById('mazeFrame');
         let ctx = canvas.getContext('2d');
-        ctx.lineWidth = TILE_SIZE/2;
+        ctx.lineWidth = TILE_SIZE-2;  // fill entire width of tunnel except for walls
         ctx.beginPath();
         ctx.strokeStyle = color;
-        ctx.moveTo(colToX(col1), rowToY(row1));
-        ctx.lineTo(colToX(col2), rowToY(row2));
-        ctx.stroke();    
+        // for up or down we start and finish above/below center of cell
+        // for right or left we start and finish to right/left of center
+        // in either case, by (TILE_SIZE/2) - 1;
+        var offset = (TILE_SIZE/2) - 1;
+        if (direction == "up") {
+          ctx.moveTo(colToX(col1)         , rowToY(row1) + offset);
+          ctx.lineTo(colToX(col2)         , rowToY(row2) - offset);
+          ctx.stroke();    
+        } else if (direction == "down") {
+          ctx.moveTo(colToX(col1)         , rowToY(row1) - offset);
+          ctx.lineTo(colToX(col2)         , rowToY(row2) + offset);
+          ctx.stroke(); 
+        } else if (direction == "left") {
+          ctx.moveTo(colToX(col1) + offset, rowToY(row1)         );
+          ctx.lineTo(colToX(col2) - offset, rowToY(row2)         );
+          ctx.stroke(); 
+        } else if (direction == "right") {
+          ctx.moveTo(colToX(col1) - offset, rowToY(row1)         );
+          ctx.lineTo(colToX(col2) + offset, rowToY(row2)         );
+          ctx.stroke(); 
+        }
       }
 
       function tryMove(dir, col, row) {
@@ -722,11 +741,22 @@
         }
       }
 
+      function drawUserSpot() {
+        let canvas = document.getElementById('mazeFrame');
+        let ctx = canvas.getContext('2d');
+        ctx.beginPath();
+        ctx.fillStyle = '#FF0000';
+        var radius = (TILE_SIZE-2)/2;
+        var startAngle = 0;
+        var endAngle = 2 * Math.PI;
+        ctx.arc(colToX(userCol), rowToY(userRow), radius, startAngle, endAngle);
+        ctx.fill();
+      }
 
       function tryMoveUp(col, row) {
         if(testMoveUp(col, row)) {
           jump();
-          drawPathSegment(col, row, col, row-1, "#00FF33");
+          drawPathSegment(col, row, col, row-1, "#00FF33", "up");
           userRow -= 1;
           if (isFinish(col, row-1)) {
             tada();
@@ -741,7 +771,7 @@
       function tryMoveDown(col, row) {
         if(testMoveDown(col, row)) {
           jump();
-          drawPathSegment(col, row, col, row+1, "#00FF33");
+          drawPathSegment(col, row, col, row+1, "#00FF33", "down");
           userRow += 1;
           if (isFinish(col, row+1)) {
             tada();
@@ -756,7 +786,7 @@
       function tryMoveLeft(col, row) {
         if(testMoveLeft(col, row)) {
           jump();
-          drawPathSegment(col, row, col-1, row, "#00FF33");
+          drawPathSegment(col, row, col-1, row, "#00FF33", "left");
           userCol -= 1;
           if (isFinish(col-1, row)) {
             tada();
@@ -771,7 +801,7 @@
       function tryMoveRight(col, row) {          
         if(testMoveRight(col, row)) {
           jump();
-          drawPathSegment(col, row, col+1, row, "#00FF33");
+          drawPathSegment(col, row, col+1, row, "#00FF33", "right");
           userCol += 1;
           if (isFinish(col+1, row)) {
             tada();
@@ -800,6 +830,7 @@
         else if (e.keyCode == '39') {
           tryRun("right", userCol, userRow);
         }
+        drawUserSpot();
       }
 
 
