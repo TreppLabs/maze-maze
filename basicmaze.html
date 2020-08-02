@@ -63,6 +63,11 @@
       // maze indexed [col,row] or [x,y]
       // top left cell is [0,0]
 
+      const WALL_COLOR = "#000000";
+      const USER_PATH_COLOR = "#00FF33";
+      const SOLUTION_COLOR = "#FF0000";
+      const SPOT_COLOR = "#FF0000";
+
       // initially all walls are filled in
       var horizWalls = new Array(MAZE_COLS);
       for (var i = 0; i < horizWalls.length; i++) {
@@ -409,14 +414,14 @@
               var y = TOP_MARGIN + row * TILE_SIZE;
               if (horizWalls[col][row]) {
                 ctx.beginPath();
-                ctx.strokeStyle = '#000000';
+                ctx.strokeStyle = WALL_COLOR;
                 ctx.moveTo(x, y);
                 ctx.lineTo(x + TILE_SIZE, y);
                 ctx.stroke();
               }
               if (vertWalls[col][row]) {
                 ctx.beginPath();
-                ctx.strokeStyle = '#000000';
+                ctx.strokeStyle = WALL_COLOR;
                 ctx.moveTo(x, y);
                 ctx.lineTo(x, y + TILE_SIZE);
                 ctx.stroke();
@@ -425,7 +430,7 @@
               if (col == MAZE_COLS-1) {
                 if (vertWalls[col+1][row]) {
                   ctx.beginPath();
-                  ctx.strokeStyle = '#000000';
+                  ctx.strokeStyle = WALL_COLOR;
                   ctx.moveTo(x + TILE_SIZE, y);
                   ctx.lineTo(x + TILE_SIZE, y + TILE_SIZE);
                   ctx.stroke();
@@ -435,7 +440,7 @@
               if (row == MAZE_ROWS-1) {
                 if (horizWalls[col][row+1]) {
                   ctx.beginPath();
-                  ctx.strokeStyle = '#000000';
+                  ctx.strokeStyle = WALL_COLOR;
                   ctx.moveTo(x, y + TILE_SIZE);
                   ctx.lineTo(x + TILE_SIZE, y + TILE_SIZE);
                   ctx.stroke();
@@ -472,7 +477,7 @@
             let prevX = LEFT_MARGIN + prevCol * TILE_SIZE + TILE_SIZE/2;
             let prevY = TOP_MARGIN  + prevRow * TILE_SIZE + TILE_SIZE/2;
             ctx.beginPath();
-            ctx.strokeStyle = '#FF0000';
+            ctx.strokeStyle = SOLUTION_COLOR;
             ctx.moveTo(curX, curY);
             ctx.lineTo(prevX, prevY);
             ctx.stroke();
@@ -745,7 +750,7 @@
         let canvas = document.getElementById('mazeFrame');
         let ctx = canvas.getContext('2d');
         ctx.beginPath();
-        ctx.fillStyle = '#FF0000';
+        ctx.fillStyle = SPOT_COLOR;
         var radius = (TILE_SIZE-2)/2;
         var startAngle = 0;
         var endAngle = 2 * Math.PI;
@@ -756,7 +761,7 @@
       function tryMoveUp(col, row) {
         if(testMoveUp(col, row)) {
           jump();
-          drawPathSegment(col, row, col, row-1, "#00FF33", "up");
+          drawPathSegment(col, row, col, row-1, USER_PATH_COLOR, "up");
           userRow -= 1;
           if (isFinish(col, row-1)) {
             tada();
@@ -771,7 +776,7 @@
       function tryMoveDown(col, row) {
         if(testMoveDown(col, row)) {
           jump();
-          drawPathSegment(col, row, col, row+1, "#00FF33", "down");
+          drawPathSegment(col, row, col, row+1, USER_PATH_COLOR, "down");
           userRow += 1;
           if (isFinish(col, row+1)) {
             tada();
@@ -786,7 +791,7 @@
       function tryMoveLeft(col, row) {
         if(testMoveLeft(col, row)) {
           jump();
-          drawPathSegment(col, row, col-1, row, "#00FF33", "left");
+          drawPathSegment(col, row, col-1, row, USER_PATH_COLOR, "left");
           userCol -= 1;
           if (isFinish(col-1, row)) {
             tada();
@@ -801,7 +806,7 @@
       function tryMoveRight(col, row) {          
         if(testMoveRight(col, row)) {
           jump();
-          drawPathSegment(col, row, col+1, row, "#00FF33", "right");
+          drawPathSegment(col, row, col+1, row, USER_PATH_COLOR, "right");
           userCol += 1;
           if (isFinish(col+1, row)) {
             tada();
