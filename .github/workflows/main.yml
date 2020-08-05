@@ -22,7 +22,7 @@ jobs:
         with:
           fromPhoneNumber: '+1(516)271-3927'
           toPhoneNumber: '+1(415)2907984'
-          message: 'D00D\!\! maze-maze repo updated at GitHub, please update S3 bucket\!'
+          message: 'D00D!! maze-maze repo updated at GitHub, please update S3 bucket!'
         env:
           TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
           TWILIO_API_KEY: ${{ secrets.TWILIO_API_KEY }}
