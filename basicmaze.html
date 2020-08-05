@@ -5,6 +5,7 @@
   <head>
     <meta charset="utf-8"/>
     <title>maze maze</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script type="text/javascript">
 
       // Future TODO: objects
@@ -63,10 +64,32 @@
       // maze indexed [col,row] or [x,y]
       // top left cell is [0,0]
 
-      const WALL_COLOR = "#000000";
-      const USER_PATH_COLOR = "#00FF33";
-      const SOLUTION_COLOR = "#FF0000";
-      const SPOT_COLOR = "#FF0000";
+      // would be nice to generate colors, or to have a dependency on a palette library, but for now we'll use a couple popular palettes
+      let colorPalettes = [
+        ["#2b2e4a", "#e84545", "#903749", "#53354a"],
+        ["#7a9eaf", "#655989", "#de88a5", "#ffcebb"],
+        ["#f9ed69", "#f08a5d", "#b83b5e", "#6a2c70"],
+        ["#f0f5f9", "#c9d6df", "#52616b", "#1e2022"],
+        ["#0e2e3b", "#166678", "#7db9b3", "#d8d7c3"],
+        ["#4ac6b7", "#4f5e7f", "#965f8a", "#ff7070"],
+        ["#222831", "#393e46", "#00adb5", "#eeeeee"]
+      ];
+      let numColorPalettes = 7;
+
+      let WALL_COLOR = "#000000";
+      let USER_PATH_COLOR = "#00FF33";
+      let SOLUTION_COLOR = "#FF0000";
+      let SPOT_COLOR = "#FF0000";
+
+      function reassignColors() {
+        let colorIndex = Math.floor(Math.random() * (numColorPalettes));
+        $("#main").css("background-color", colorPalettes[colorIndex][2]);
+        $(".frame").css("background-color", colorPalettes[colorIndex][0]);
+        // WALL_COLOR = colorPalettes[colorIndex][0];  /// walls stay black for now
+        USER_PATH_COLOR = colorPalettes[colorIndex][1];
+        SOLUTION_COLOR = colorPalettes[colorIndex][2];
+        SPOT_COLOR = colorPalettes[colorIndex][3];
+      }
 
       // initially all walls are filled in
       var horizWalls = new Array(MAZE_COLS);
@@ -377,6 +400,7 @@
         //   // }
         // }
         makeMaze();
+        reassignColors();
         drawMaze();
         // drawSolution();
       }
@@ -845,12 +869,12 @@
     <style type="text/css">
       canvas { padding: 20px; }
       #main {
-        background: #999;
+        background: #999999;
         padding: 10px;
       }
 
       .frame {
-        background: #ccc;
+        background: #cccccc;
         /*height: 200px;*/
         margin: 20px;
       }
